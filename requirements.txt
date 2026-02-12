@@ -3,3 +3,6 @@ pandas
 plotly
 st-gsheets-connection
 google-generativeai
+curl_cffi
+lxml
+deep-translator
