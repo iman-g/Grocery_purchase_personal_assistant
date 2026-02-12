@@ -49,7 +49,6 @@ jobs:
           # Add the new data files
           git add stores/*.csv
           
-          # CRITICAL: Add the translation memory so it "learns" for tomorrow
           git add product_translation_memory.csv
           
           # Commit if there are changes
