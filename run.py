@@ -7,9 +7,10 @@ try:
     import lidl
     import albert_heijn
     import file_trans
+    import map_purchases
 except ImportError as e:
     print(f"❌ Error: {e}")
-    print("Ensure lidl.py, albert_heijn.py, and file_trans.py are in the same folder.")
+    print("Ensure lidl.py, albert_heijn.py, file_trans.py, and map_purchases.py are in the same folder.")
     sys.exit(1)
 
 def main():
@@ -20,16 +21,16 @@ def main():
     print(f"   🚀 DAILY DATA PIPELINE STARTED: {today_str}")
     print(f"==================================================")
 
-    # --- STEP 1: LIDL ---
-    print("\n[1/3] Scraping Lidl...")
+    # --- STEP 1: LIDL SCRAPING ---
+    print("\n[1/4] Scraping Lidl...")
+    lidl_file = None
     try:
         lidl_file = lidl.scrape_lidl_final_refined()
     except Exception as e:
         print(f"❌ Lidl Failed: {e}")
-        lidl_file = None
 
-    # --- STEP 2: ALBERT HEIJN ---
-    print("\n[2/3] Scraping Albert Heijn...")
+    # --- STEP 2: ALBERT HEIJN SCRAPING ---
+    print("\n[2/4] Scraping Albert Heijn...")
     ah_export_file = None
     ah_summary_file = None
     try:
@@ -37,17 +38,30 @@ def main():
     except Exception as e:
         print(f"❌ AH Failed: {e}")
 
-    # --- STEP 3: TRANSLATE ---
-    print("\n[3/3] Translating Data...")
+    # --- STEP 3: TRANSLATION ---
+    print("\n[3/4] Translating Data...")
     if any([lidl_file, ah_export_file, ah_summary_file]):
-        file_trans.run_translation_pipeline(
-            lidl_file=lidl_file,
-            ah_export_file=ah_export_file,
-            ah_summary_file=ah_summary_file
-        )
+        try:
+            file_trans.run_translation_pipeline(
+                lidl_file=lidl_file,
+                ah_export_file=ah_export_file,
+                ah_summary_file=ah_summary_file
+            )
+        except Exception as e:
+            print(f"❌ Translation Failed: {e}")
     else:
         print("⚠️ No files to translate.")
 
+    # --- STEP 4: MAPPING PURCHASES (GOOGLE SHEETS) ---
+    print("\n[4/4] Mapping Purchases to Google Sheets...")
+    try:
+
+        map_purchases.run_mapping_pipeline()
+    except Exception as e:
+        print(f"❌ Mapping Failed: {e}")
+        print("   (Check your internet or 'grocery_tracker.json' credentials)")
+
+    # --- FINISH ---
     elapsed = (time.time() - start_time) / 60
     print(f"\n==================================================")
     print(f"✅ PIPELINE COMPLETED in {elapsed:.2f} minutes")
