@@ -28,6 +28,12 @@ jobs:
         run: |
           pip install -r requirements.txt
 
+      - name: Create Secrets File
+        env:
+          GCP_JSON_KEY: ${{ secrets.GCP_JSON_KEY }}
+        run: |
+          echo "$GCP_JSON_KEY" > grocery_tracker.json
+
       - name: Run Pipeline
         run: |
           python run.py
