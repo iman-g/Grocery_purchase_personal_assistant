@@ -1,0 +1,59 @@
+name: Daily Grocery Scrape
+
+on:
+  schedule:
+    # Runs at 06:00 UTC every day
+    - cron: '0 15 * * *'
+  # Allows you to run it manually from the Actions tab for testing
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  scrape-and-translate:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.9'
+          cache: 'pip'
+
+      - name: Install Dependencies
+        run: |
+          pip install -r requirements.txt
+
+      - name: Run Pipeline
+        run: |
+          python run.py
+
+      - name: Organize Files
+        run: |
+          # Create stores directory if it doesn't exist
+          mkdir -p stores
+          
+          # Move the daily data files into the stores folder
+          # We move files containing '20' (year) to avoid moving python scripts
+          mv *202*.csv stores/ || echo "No CSV files generated to move"
+
+      - name: Commit and Push Changes
+        run: |
+          git config --global user.name "GitHub Actions Bot"
+          git config --global user.email "actions@github.com"
+          
+          # Add the new data files
+          git add stores/*.csv
+          
+          # CRITICAL: Add the translation memory so it "learns" for tomorrow
+          git add product_translation_memory.csv
+          
+          # Commit if there are changes
+          git commit -m "🤖 Daily Data Update: $(date +'%Y-%m-%d')" || echo "No changes to commit"
+          
+          # Push back to the repository
+          git push
