@@ -6,3 +6,5 @@ google-generativeai
 curl_cffi
 lxml
 deep-translator
+gspread
+rapidfuzz
