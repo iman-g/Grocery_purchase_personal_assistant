@@ -91,11 +91,16 @@ def run_mapping_pipeline():
     to_process_indices = []
     
     for index, row in df_sheet.iterrows():
-        store = str(row.get('store', '')).lower()
+        # Fallback to 'storeid' just in case your column is named differently
+        store = str(row.get('store', row.get('storeid', ''))).lower()
         existing_id = str(row.get('id', '')).strip()
         
-        # NOTE: I assumed you want 'in' AH. If you meant 'not in', change this back!
-        if 'albert_heijn' in store and not existing_id:
+        # If pandas read an empty cell as 'nan' or 'none', clear it
+        if existing_id in ['nan', 'none']:
+            existing_id = ''
+        
+        # The Fix: Check for flexible variations of AH, and check for a missing ID
+        if ('albert' in store or store == 'ah') and not existing_id:
             to_process_indices.append(index)
             
     print(f"🔍 Found {len(to_process_indices)} unmapped AH purchases.")

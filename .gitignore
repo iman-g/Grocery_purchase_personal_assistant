@@ -1,1 +1,29 @@
+# ---- Secrets & credentials (never commit) ----
+.env
+*.env
 grocery_tracker.json
+*service-account*.json
+*credentials*.json
+
+# ---- Python ----
+venv/
+.venv/
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+
+# ---- Data files (kept local, not in repo) ----
+*.csv
+stores/
+*.duckdb
+*.duckdb.wal
+product_translation_memory.csv
+
+# ---- ML / experiment tracking ----
+mlruns/
+*.pkl
+*.joblib
+
+# ---- App / tooling ----
+.streamlit/secrets.toml
+.DS_Store

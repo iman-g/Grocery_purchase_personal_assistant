@@ -8,18 +8,15 @@ BATCH_SIZE = 50
 MEMORY_FILE = "product_translation_memory.csv"
 
 def translate_text_batch(text_list):
-    """
-    Translates a list of strings from Dutch to English.
-    """
+    """Translates a list of strings from Dutch to English and returns a dictionary map."""
     translator = GoogleTranslator(source='nl', target='en')
-    # Filter out non-strings or empty strings
     unique_texts = list(set([t for t in text_list if isinstance(t, str) and t.strip()]))
-    translation_map = {}
     
     if not unique_texts:
-        return text_list
+        return {}
 
     print(f"   Note: Found {len(unique_texts)} unique terms to translate.")
+    translation_map = {}
 
     for i in range(0, len(unique_texts), BATCH_SIZE):
         batch = unique_texts[i : i + BATCH_SIZE]
@@ -27,151 +24,128 @@ def translate_text_batch(text_list):
             results = translator.translate_batch(batch)
             for original, translated in zip(batch, results):
                 translation_map[original] = translated
-            
-            # Progress bar effect
+                
             print(f"   ... Translated {min(i + BATCH_SIZE, len(unique_texts))}/{len(unique_texts)}")
             time.sleep(0.2)
         except Exception as e:
             print(f"   ❌ Batch Error: {e}")
-            for item in batch: translation_map[item] = item # Fallback
+            for item in batch: 
+                translation_map[item] = item # Fallback to original on failure
 
-    # Map back to original list
-    return [translation_map.get(t, t) if isinstance(t, str) else t for t in text_list]
+    return translation_map
 
 def load_translation_memory():
-    """
-    Loads memory and ENSURES uniqueness.
-    """
+    """Loads memory, handles legacy schemas, and ensures uniqueness."""
     if not os.path.exists(MEMORY_FILE):
-        print(f"🆕 No memory file found. Creating new one: {MEMORY_FILE}")
-        df = pd.DataFrame(columns=['id', 'dutch_title', 'english_title'])
+        print(f"🆕 No memory file found. Creating: {MEMORY_FILE}")
+        df = pd.DataFrame(columns=['store', 'id', 'dutch_title', 'english_title'])
         df.to_csv(MEMORY_FILE, index=False)
-        return {}
+        return df
     
-    print(f"🧠 Loading Translation Memory from {MEMORY_FILE}...")
-    # Force ID to string
-    df = pd.read_csv(MEMORY_FILE, dtype={'id': str})
+    df = pd.read_csv(MEMORY_FILE, dtype={'id': str, 'store': str})
     
-    # CRITICAL FIX: Drop duplicates immediately upon loading
+    # Schema Migration: Add 'store' column to historical AH data if missing
+    if 'store' not in df.columns:
+        print("   🔄 Migrating legacy memory file (adding 'store' column)...")
+        df.insert(0, 'store', 'albert_heijn')
+    
     initial_len = len(df)
-    df = df.drop_duplicates(subset=['id'], keep='last')
-    if len(df) < initial_len:
-        print(f"   🧹 Cleaned {initial_len - len(df)} duplicate IDs from memory file.")
-        # Optional: Save clean version back immediately
-        df.to_csv(MEMORY_FILE, index=False)
+    # Deduplicate based on store + id combo
+    df = df.drop_duplicates(subset=['store', 'id'], keep='last')
     
-    # Create lookup dictionary
-    memory_dict = pd.Series(df.english_title.values, index=df.id).to_dict()
-    print(f"   ↳ Loaded {len(memory_dict)} unique translated items.")
-    return memory_dict
+    if len(df) < initial_len:
+        print(f"   🧹 Cleaned {initial_len - len(df)} duplicate records from memory.")
+        df.to_csv(MEMORY_FILE, index=False)
+        
+    print(f"🧠 Loaded Translation Memory: {len(df)} unique records.")
+    return df
 
 def update_memory_safely(new_entries_df):
-    """
-    Updates the CSV file while strictly enforcing uniqueness.
-    """
-    if new_entries_df.empty: return
-
-    # 1. Load existing file
-    if os.path.exists(MEMORY_FILE):
-        existing_df = pd.read_csv(MEMORY_FILE, dtype={'id': str})
-    else:
-        existing_df = pd.DataFrame(columns=['id', 'dutch_title', 'english_title'])
-
-    # 2. Combine Old + New
-    combined_df = pd.concat([existing_df, new_entries_df], ignore_index=True)
-
-    # 3. Deduplicate (Keep LAST aka newest entry if there's a conflict)
-    deduped_df = combined_df.drop_duplicates(subset=['id'], keep='last')
-
-    # 4. Save (Overwrite the file with the clean version)
-    deduped_df.to_csv(MEMORY_FILE, index=False)
-    print(f"💾 Updated Memory: File now contains {len(deduped_df)} unique items (Added {len(new_entries_df)} new).")
-
-def process_lidl(filename):
-    print(f"\n🚜 Processing Lidl File: {filename}...")
-    try:
-        df = pd.read_csv(filename)
-        # Lidl doesn't use the ID memory because IDs aren't stable across weeks
-        if 'title' in df.columns:
-            print("   Translating 'title'...")
-            df['title_eng'] = translate_text_batch(df['title'].tolist())
-        
-        output_name = filename.replace(".csv", "_translated.csv")
-        df.to_csv(output_name, index=False)
-        print(f"✅ Saved to {output_name}")
-    except FileNotFoundError: print(f"❌ File not found: {filename}")
-
-def process_ah_summary(filename):
-    print(f"\n🚜 Processing AH Summary: {filename}...")
-    try:
-        df = pd.read_csv(filename)
-        # Summary categories are small, just translate on the fly
-        if 'scraped_aisle' in df.columns:
-            df['aisle_eng'] = translate_text_batch(df['scraped_aisle'].tolist())
-        
-        output_name = filename.replace(".csv", "_translated.csv")
-        df.to_csv(output_name, index=False)
-        print(f"✅ Saved to {output_name}")
-    except FileNotFoundError: print(f"❌ File not found: {filename}")
-
-def process_ah_export(filename):
-    print(f"\n🚀 Processing AH Export: {filename}")
-    try:
-        df_daily = pd.read_csv(filename)
-    except FileNotFoundError:
-        print("❌ Input file not found.")
+    """Updates the CSV file efficiently and safely."""
+    if new_entries_df.empty: 
         return
 
-    # 1. Load Memory (Cleaned)
-    memory_map = load_translation_memory()
+    existing_df = load_translation_memory()
+    combined_df = pd.concat([existing_df, new_entries_df], ignore_index=True)
+    deduped_df = combined_df.drop_duplicates(subset=['store', 'id'], keep='last')
     
-    # Ensure ID is string
-    df_daily['id'] = df_daily['id'].astype(str)
-    
-    # 2. Identify Missing Translations
-    # Only look for IDs that are NOT in our memory map
-    is_new = ~df_daily['id'].isin(memory_map.keys())
-    new_products = df_daily[is_new].copy()
-    
-    print(f"   New Items to Translate: {len(new_products)}")
-    
-    # 3. Translate Only New Items
-    if not new_products.empty:
-        # Deduplicate within the new batch itself (e.g. if 'Milk' appears twice in today's file)
-        unique_new = new_products[['id', 'title']].drop_duplicates(subset=['id'])
-        
-        titles_nl = unique_new['title'].tolist()
-        titles_en = translate_text_batch(titles_nl)
-        
-        # Prepare new memory dataframe
-        new_memory = pd.DataFrame({
-            'id': unique_new['id'],
-            'dutch_title': titles_nl,
-            'english_title': titles_en
-        })
-        
-        # Save safely
-        update_memory_safely(new_memory)
-        
-        # Update local map for this run
-        new_map = pd.Series(titles_en, index=unique_new['id']).to_dict()
-        memory_map.update(new_map)
-    
-    # 4. Map Translations to Main Dataframe
-    df_daily['title_eng'] = df_daily['id'].map(memory_map).fillna(df_daily['title'])
-    
-    # 5. Translate Categories (Optional, usually small enough to just run)
-    if 'scraped_aisle' in df_daily.columns:
-        df_daily['aisle_eng'] = translate_text_batch(df_daily['scraped_aisle'].tolist())
+    deduped_df.to_csv(MEMORY_FILE, index=False)
+    print(f"💾 Saved Memory: Added {len(new_entries_df)} new items. Total memory size: {len(deduped_df)}.")
 
-    output_file = filename.replace(".csv", "_translated.csv")
-    df_daily.to_csv(output_file, index=False)
-    print(f"✅ Finished! Saved to {output_file}")
+def process_file(filepath, store_name, id_col, title_col, aisle_col=None):
+    """
+    Standardized ETL transformer: 
+    Finds missing translations, updates memory, joins data, and overwrites the file.
+    """
+    if not filepath:
+        return
+        
+    print(f"\n🚜 Processing {store_name.upper()} Data: {filepath}")
+    try:
+        df = pd.read_csv(filepath)
+    except FileNotFoundError:
+        print(f"❌ File not found: {filepath}")
+        return
+
+    # Ensure ID is string for consistent matching
+    df[id_col] = df[id_col].astype(str)
+    memory_df = load_translation_memory()
+    
+    # Filter memory for this specific store
+    store_memory = memory_df[memory_df['store'] == store_name]
+    known_translations = dict(zip(store_memory['id'], store_memory['english_title']))
+
+    # Identify items needing translation
+    missing_mask = ~df[id_col].isin(known_translations.keys())
+    missing_items = df[missing_mask].drop_duplicates(subset=[id_col])
+    
+    if not missing_items.empty:
+        print(f"   Translating {len(missing_items)} new {store_name} products...")
+        titles_to_translate = missing_items[title_col].tolist()
+        new_translations_map = translate_text_batch(titles_to_translate)
+        
+        # Build new memory dataframe
+        new_memory_data = []
+        for _, row in missing_items.iterrows():
+            item_id = row[id_col]
+            dutch_text = row[title_col]
+            english_text = new_translations_map.get(dutch_text, dutch_text)
+            
+            new_memory_data.append({
+                'store': store_name,
+                'id': item_id,
+                'dutch_title': dutch_text,
+                'english_title': english_text
+            })
+            # Update local dictionary immediately for the join
+            known_translations[item_id] = english_text
+            
+        new_memory_df = pd.DataFrame(new_memory_data)
+        update_memory_safely(new_memory_df)
+
+    # Perform the In-Memory Join
+    df['title_eng'] = df[id_col].map(known_translations).fillna(df[title_col])
+    
+    # Handle Aisle/Categories (Small enough to translate on the fly without tracking in memory)
+    if aisle_col and aisle_col in df.columns:
+        print("   Translating categories...")
+        unique_aisles = df[aisle_col].dropna().unique().tolist()
+        aisle_map = translate_text_batch(unique_aisles)
+        df['aisle_eng'] = df[aisle_col].map(aisle_map).fillna(df[aisle_col])
+
+    # Overwrite the original file
+    df.to_csv(filepath, index=False)
+    print(f"✅ Data enriched and saved over {filepath}")
 
 def run_translation_pipeline(lidl_file=None, ah_export_file=None, ah_summary_file=None):
-    if lidl_file: process_lidl(lidl_file)
-    if ah_summary_file: process_ah_summary(ah_summary_file)
-    if ah_export_file: process_ah_export(ah_export_file)
-
-if __name__ == "__main__":
-    print("Run via run.py please.")
+    # Lidl uses 'title' as the ID since actual IDs are unstable week-to-week
+    if lidl_file: 
+        process_file(lidl_file, store_name='lidl', id_col='title', title_col='title')
+        
+    # Albert Heijn Summary uses the aisle name as the identifier
+    if ah_summary_file: 
+        process_file(ah_summary_file, store_name='ah_summary', id_col='scraped_aisle', title_col='scraped_aisle')
+        
+    # Albert Heijn Main Export uses strict product IDs
+    if ah_export_file: 
+        process_file(ah_export_file, store_name='albert_heijn', id_col='id', title_col='title', aisle_col='scraped_aisle')
