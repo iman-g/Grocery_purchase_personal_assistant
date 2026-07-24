@@ -1,0 +1,13 @@
+# Local dbt profile for the grocery project.
+# Kept in the project dir for portability; point dbt at it with:
+#   dbt build --profiles-dir dbt
+#
+# The DuckDB file lives one level up from dbt/ (repo root).
+grocery:
+  target: dev
+  outputs:
+    dev:
+      type: duckdb
+      path: "../grocery.duckdb"
+      threads: 4
+      # dbt writes staging/intermediate/marts schemas into the same file

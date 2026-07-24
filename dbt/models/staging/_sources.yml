@@ -1,0 +1,19 @@
+version: 2
+
+sources:
+  - name: raw
+    description: "Raw landed data built by warehouse/load.py from the scrapers and receipt bot."
+    schema: raw
+    tables:
+      - name: raw_ah_products
+        description: "Daily Albert Heijn catalog snapshots. One row per product per scrape day."
+        loaded_at_field: "CAST(scraped_at AS TIMESTAMP)"
+        freshness:
+          warn_after: {count: 3, period: day}
+          error_after: {count: 10, period: day}
+      - name: raw_lidl_offers
+        description: "Daily Lidl offers snapshots. One row per offer per scrape day."
+      - name: raw_ah_summary
+        description: "Per-aisle rollup of AH scrape (items found, bonus items)."
+      - name: raw_translation_memory
+        description: "Persistent NL->EN cache keyed by AH product id."

@@ -10,3 +10,10 @@ gspread
 rapidfuzz
 python-telegram-bot>=20.0
 python-dotenv
+
+# --- warehouse + analytics engineering ---
+# Pinned to the 1.9 line: dbt-core 1.10+ pulls dbt-core-experimental-parser
+# (an alpha that downloads a wheel at install time and fails behind some TLS setups).
+duckdb>=1.0
+dbt-core==1.9.*
+dbt-duckdb==1.9.*

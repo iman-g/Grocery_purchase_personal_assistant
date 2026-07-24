@@ -1,0 +1,47 @@
+version: 2
+
+models:
+  - name: dim_products
+    description: "Product dimension — one row per product per store, English-named, with category."
+    columns:
+      - name: product_id
+        data_tests: [not_null]
+      - name: product_name_en
+        data_tests: [not_null]
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns: [store, product_id]
+
+  - name: fct_price_daily
+    description: "Daily price fact per store per product, enriched with product name and category."
+    columns:
+      - name: price
+        data_tests: [not_null]
+      - name: store
+        data_tests:
+          - accepted_values:
+              values: ['albert_heijn', 'lidl']
+      - name: scrape_date
+        data_tests: [not_null]
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns: [store, product_id, scrape_date]
+
+  - name: mart_best_price_today
+    description: >
+      For each product (matched across stores by normalised English name), the cheapest
+      store on the latest day seen. The headline "buy this here" table.
+    columns:
+      - name: match_name
+        description: "Lowercased/trimmed English name used to pair products across stores."
+        data_tests: [not_null, unique]
+      - name: cheapest_store
+        data_tests:
+          - accepted_values:
+              values: ['albert_heijn', 'lidl']
+      - name: cheapest_price
+        data_tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 0
+              inclusive: false

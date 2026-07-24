@@ -1,0 +1,50 @@
+version: 2
+
+models:
+  - name: stg_ah_products
+    description: "Cleaned Albert Heijn catalog, one row per product per scrape day (rows without a price dropped)."
+    columns:
+      - name: ah_product_day_key
+        description: "Surrogate key: md5(product_id, scrape_date). Unique per product per day."
+        data_tests: [unique, not_null]
+      - name: product_id
+        description: "Albert Heijn product id."
+        data_tests: [not_null]
+      - name: price
+        description: "Current shelf/offer price in EUR."
+        data_tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 0
+              inclusive: false
+      - name: is_on_offer
+        description: "True when the product was flagged as a bonus/offer on that day."
+        data_tests:
+          - accepted_values:
+              values: [true, false]
+      - name: scrape_date
+        data_tests: [not_null]
+
+  - name: stg_lidl_offers
+    description: "Cleaned Lidl offers, one row per offer per scrape day."
+    columns:
+      - name: lidl_offer_day_key
+        description: "Surrogate key: md5(product_name_nl, scrape_date)."
+        data_tests: [unique, not_null]
+      - name: price
+        data_tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 0
+              inclusive: false
+      - name: is_member_deal
+        description: "True for Lidl Plus member pricing."
+        data_tests:
+          - accepted_values:
+              values: [true, false]
+
+  - name: stg_translation_memory
+    description: "NL->EN translation cache keyed by AH product id."
+    columns:
+      - name: product_id
+        data_tests: [not_null]
