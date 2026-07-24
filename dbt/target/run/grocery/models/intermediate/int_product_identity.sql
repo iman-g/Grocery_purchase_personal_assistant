@@ -12,14 +12,31 @@
 
 with ah_products as (
 
-    select distinct
+    -- One row per AH product_id, using its MOST RECENT scrape values.
+    -- ~661 products were renamed across scrape days, so a plain DISTINCT would emit
+    -- multiple rows per id and break the product grain. Take the latest instead.
+    select
         store,
         product_id,
         product_name_nl,
         main_category,
         sub_category,
         brand
-    from "grocery"."main_staging"."stg_ah_products"
+    from (
+        select
+            store,
+            product_id,
+            product_name_nl,
+            main_category,
+            sub_category,
+            brand,
+            row_number() over (
+                partition by product_id
+                order by scrape_date desc
+            ) as rn
+        from "grocery"."main_staging"."stg_ah_products"
+    )
+    where rn = 1
 
 ),
 
@@ -42,15 +59,30 @@ ah_named as (
 
 lidl_products as (
 
-    select distinct
+    -- One row per Lidl product (keyed by name hash), using its latest scrape values.
+    select
         store,
-        md5(product_name_nl)       as product_id,
+        product_id,
         product_name_nl,
-        product_name_en,
+        -- fall back to the Dutch name when the scraper had no English translation
+        -- (same coalesce logic as the AH side; ~225 Lidl products untranslated)
+        coalesce(product_name_en, product_name_nl) as product_name_en,
         cast(null as varchar)      as main_category,
         cast(null as varchar)      as sub_category,
         cast(null as varchar)      as brand
-    from "grocery"."main_staging"."stg_lidl_offers"
+    from (
+        select
+            store,
+            md5(product_name_nl)   as product_id,
+            product_name_nl,
+            product_name_en,
+            row_number() over (
+                partition by md5(product_name_nl)
+                order by scrape_date desc
+            ) as rn
+        from "grocery"."main_staging"."stg_lidl_offers"
+    )
+    where rn = 1
 
 )
 

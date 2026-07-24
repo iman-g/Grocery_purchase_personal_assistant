@@ -1,4 +1,13 @@
--- "Where should we buy this?" — for each product name, the cheapest store and price
+
+  
+    
+    
+
+    create  table
+      "grocery"."main_marts"."mart_best_price_today__dbt_tmp"
+  
+    as (
+      -- "Where should we buy this?" — for each product name, the cheapest store and price
 -- on the most recent day it was seen.
 --
 -- Grain: one row per normalised English product name (match_name).
@@ -28,7 +37,7 @@ with latest as (
             partition by store, product_id
             order by scrape_date desc
         ) as rn
-    from {{ ref('fct_price_daily') }}
+    from "grocery"."main_marts"."fct_price_daily"
     where product_name_en is not null
 
 ),
@@ -74,3 +83,6 @@ select
     price_as_of
 from ranked
 where price_rank = 1
+    );
+  
+  
