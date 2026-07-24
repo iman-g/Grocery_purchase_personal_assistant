@@ -27,3 +27,11 @@ mlruns/
 # ---- App / tooling ----
 .streamlit/secrets.toml
 .DS_Store
+
+# ---- Private working files (not for public repo) ----
+CLAUDE.md
+*.docx
+*.jpg
+*.jpeg
+*.png
+test.py
