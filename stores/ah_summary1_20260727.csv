@@ -1,24 +1,24 @@
 scraped_aisle,items_found,bonus_items,title_eng
-bakkerij,543,182,bakery
-bier-wijn-aperitieven,2991,1841,beer-wine aperitifs
-borrel-chips-snacks,2704,1303,drinks-chips-snacks
-diepvries,183,76,freezer
-drogisterij,975,661,drugstore
-frisdrank-sappen-water,2077,985,soft drinks-juices-water
-fruit-verse-sappen,544,256,fresh fruit juices
-glutenvrij,403,187,gluten free
-groente-aardappelen,504,109,vegetable potatoes
-kaas,291,156,cheese
-koek-snoep-chocolade,2054,798,cookie-candy-chocolate
-koffie-thee,219,108,coffee-tea
-koken-tafelen-vrije-tijd,147,62,cooking-dining-free-time
-maaltijden-salades,812,414,meals-salads
-ontbijtgranen-beleg,2264,968,breakfast cereal toppings
-pasta-rijst-wereldkeuken,2008,718,pasta-rice-world cuisine
-soepen-sauzen-kruiden-olie,2991,1216,soups-sauces-herbs-oil
-tussendoortjes,291,141,snacks
-vegetarisch-vegan-en-plantaardig,619,245,vegetarian-vegan-and-plant-based
-vis,684,373,fish
-vlees,1264,707,meat
-vleeswaren,540,298,cold cuts
-zuivel-eieren,75,15,dairy eggs
+bakkerij,39,4,bakery
+bier-wijn-aperitieven,111,84,beer-wine aperitifs
+borrel-chips-snacks,901,423,drinks-chips-snacks
+diepvries,38,10,freezer
+drogisterij,39,23,drugstore
+gezondheid-en-sport,1316,301,health-and-sports
+glutenvrij,403,188,gluten free
+groente-aardappelen,108,16,vegetable potatoes
+huishouden,363,235,households
+kaas,471,264,cheese
+koek-snoep-chocolade,218,90,cookie-candy-chocolate
+koffie-thee,902,406,coffee-tea
+koken-tafelen-vrije-tijd,1069,400,cooking-dining-free-time
+maaltijden-salades,72,41,meals-salads
+ontbijtgranen-beleg,219,94,breakfast cereal toppings
+pasta-rijst-wereldkeuken,72,29,pasta-rice-world cuisine
+soepen-sauzen-kruiden-olie,291,119,soups-sauces-herbs-oil
+tussendoortjes,147,72,snacks
+vegetarisch-vegan-en-plantaardig,145,70,vegetarian-vegan-and-plant-based
+vis,36,24,fish
+vlees,108,63,meat
+vleeswaren,864,505,cold cuts
+zuivel-eieren,255,95,dairy eggs
