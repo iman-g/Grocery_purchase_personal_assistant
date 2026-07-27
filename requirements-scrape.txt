@@ -1,0 +1,10 @@
+# Minimal deps for the daily scrape + translate + Sheet-mapping pipeline (run.py).
+# Used by .github/workflows/daily_pipeline.yml — keep this file lean so CI installs
+# fast and pip doesn't have to resolve against dbt/duckdb (which aren't needed here).
+pandas
+curl_cffi
+lxml
+deep-translator
+gspread
+rapidfuzz
+python-dotenv

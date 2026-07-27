@@ -1,3 +1,5 @@
+# Full local dev environment (app + warehouse + dbt).
+# CI's daily scrape job uses the leaner requirements-scrape.txt instead.
 streamlit
 pandas
 plotly
