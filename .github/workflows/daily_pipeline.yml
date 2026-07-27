@@ -1,11 +1,14 @@
 name: Daily Grocery Scrape
 
+# Collects the day's Albert Heijn + Lidl price/offer data and commits the dated CSVs
+# to stores/. These committed CSVs are the version-controlled raw data; the DuckDB
+# warehouse and dbt models are rebuilt locally from them via warehouse/load.py + dbt.
+
 on:
   schedule:
-    # Runs at 06:00 UTC every day
+    # 15:00 UTC daily
     - cron: '0 15 * * *'
-  # Allows you to run it manually from the Actions tab for testing
-  workflow_dispatch:
+  workflow_dispatch:  # allows manual runs from the Actions tab
 
 permissions:
   contents: write
@@ -25,40 +28,31 @@ jobs:
           cache: 'pip'
 
       - name: Install Dependencies
-        run: |
-          pip install -r requirements.txt
+        run: pip install -r requirements.txt
 
-      - name: Create Secrets File
+      - name: Create Google credentials file
         env:
           GCP_JSON_KEY: ${{ secrets.GCP_JSON_KEY }}
-        run: |
-          echo "$GCP_JSON_KEY" > grocery_tracker.json
+        run: echo "$GCP_JSON_KEY" > grocery_tracker.json
 
-      - name: Run Pipeline
-        run: |
-          python run.py
+      - name: Run scrape pipeline
+        env:
+          SHEET_ID: ${{ secrets.SHEET_ID }}
+        run: python run.py
 
-      - name: Organize Files
+      - name: Organize dated CSVs into stores/
         run: |
-          # Create stores directory if it doesn't exist
           mkdir -p stores
-          
-          # Move the daily data files into the stores folder
-          # We move files containing '20' (year) to avoid moving python scripts
-          mv *202*.csv stores/ || echo "No CSV files generated to move"
+          mv *202*.csv stores/ 2>/dev/null || echo "No dated CSVs to move"
 
-      - name: Commit and Push Changes
+      - name: Commit and push new data
         run: |
-          git config --global user.name "GitHub Actions Bot"
+          git config --global user.name  "GitHub Actions Bot"
           git config --global user.email "actions@github.com"
-          
-          # Add the new data files
           git add stores/*.csv
-          
-          git add product_translation_memory.csv
-          
-          # Commit if there are changes
-          git commit -m "🤖 Daily Data Update: $(date +'%Y-%m-%d')" || echo "No changes to commit"
-          
-          # Push back to the repository
-          git push
+          if git diff --cached --quiet; then
+            echo "No new data to commit."
+          else
+            git commit -m "🤖 Daily Data Update: $(date +'%Y-%m-%d')"
+            git push
+          fi
