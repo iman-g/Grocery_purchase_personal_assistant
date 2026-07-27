@@ -6,6 +6,12 @@ import os
 # --- CONFIGURATION ---
 BATCH_SIZE = 50
 MEMORY_FILE = "product_translation_memory.csv"
+# Safety cap: translating a large batch of never-before-seen products (live calls to
+# Google Translate, no timeout) is what made a cold-cache run take 4+ hours in CI once.
+# Cap new translations per run; anything over the cap keeps its Dutch name for now and
+# gets picked up on a later run once translated. Override via env if you want a full
+# one-off backfill locally (e.g. AH_MAX_NEW_TRANSLATIONS=999999 python run.py).
+MAX_NEW_TRANSLATIONS_PER_RUN = int(os.getenv("AH_MAX_NEW_TRANSLATIONS", "3000"))
 
 def translate_text_batch(text_list):
     """Translates a list of strings from Dutch to English and returns a dictionary map."""
@@ -97,8 +103,19 @@ def process_file(filepath, store_name, id_col, title_col, aisle_col=None):
 
     # Identify items needing translation
     missing_mask = ~df[id_col].isin(known_translations.keys())
-    missing_items = df[missing_mask].drop_duplicates(subset=[id_col])
-    
+    all_missing = df[missing_mask].drop_duplicates(subset=[id_col])
+
+    # Cap how many NEW products get live-translated this run (see config above).
+    # Overflow keeps its Dutch name for now and will be translated on a future run
+    # once it falls within the cap (memory grows monotonically, so it converges).
+    if len(all_missing) > MAX_NEW_TRANSLATIONS_PER_RUN:
+        print(f"   ⚠️ {len(all_missing)} new {store_name} products found, "
+              f"capping this run to {MAX_NEW_TRANSLATIONS_PER_RUN} "
+              f"(remaining {len(all_missing) - MAX_NEW_TRANSLATIONS_PER_RUN} deferred to a later run).")
+        missing_items = all_missing.iloc[:MAX_NEW_TRANSLATIONS_PER_RUN]
+    else:
+        missing_items = all_missing
+
     if not missing_items.empty:
         print(f"   Translating {len(missing_items)} new {store_name} products...")
         titles_to_translate = missing_items[title_col].tolist()

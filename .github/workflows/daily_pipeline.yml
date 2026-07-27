@@ -16,6 +16,11 @@ permissions:
 jobs:
   scrape-and-translate:
     runs-on: ubuntu-latest
+    # Hard ceiling so a stuck/slow run can never eat the whole Actions minutes
+    # budget unattended. A cold translation cache once made a run take 4+ hours;
+    # file_trans.py now caps new translations per run (AH_MAX_NEW_TRANSLATIONS)
+    # so this should normally finish in well under an hour.
+    timeout-minutes: 60
 
     steps:
       - name: Checkout Code
@@ -38,6 +43,10 @@ jobs:
       - name: Run scrape pipeline
         env:
           SHEET_ID: ${{ secrets.SHEET_ID }}
+          # Full catalog scrape every day for real coverage. New-product translation
+          # is capped per run (default 3000, see file_trans.py) so a cold-cache day
+          # degrades gracefully instead of running for hours.
+          AH_MAX_NEW_TRANSLATIONS: "3000"
         run: python run.py
 
       - name: Organize dated CSVs into stores/

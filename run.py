@@ -72,6 +72,7 @@
 
 
 
+import os
 import sys
 import time
 from datetime import datetime
@@ -107,6 +108,9 @@ def main():
     print("\n[2/4] Scraping Albert Heijn...")
     ah_export_file = None
     ah_summary_file = None
+    # Full, unbounded catalog scrape every run (~31k products) for real daily coverage.
+    # The scrape itself is fast (~15-30 min); the slow part historically was translating
+    # products never seen before, which file_trans.py now caps (see AH_MAX_NEW_TRANSLATIONS).
     try:
         ah_export_file, ah_summary_file = albert_heijn.scrape_ah_final()
     except Exception as e:
